@@ -27,7 +27,6 @@ open Aeneas.Data.Coinductive
 open Lean.Order
 open Aeneas.SepLogic
 
-
 section ResultImplementation
 
 unseal Result
