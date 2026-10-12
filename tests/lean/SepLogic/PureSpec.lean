@@ -57,12 +57,6 @@ example (P Q : Nat → Prop) :
 /-- error: unsolved goals
 ⊢ ⦃ emp ⦄
     Result.ok 0
-    ⦃ x => ⌜True⌝ ⦄ -/
-#guard_msgs in example : ispec emp (Result.ok 0) (fun _ => ⌜True⌝) := by done
-
-/-- error: unsolved goals
-⊢ ⦃ emp ⦄
-    Result.ok 0
     ⦃ r => ⌜r = 0⌝ ⦄ -/
 #guard_msgs in
 example : ⦃ emp ⦄ Result.ok 0 ⦃ r => ⌜r = 0⌝ ⦄ := by done
@@ -361,17 +355,6 @@ P : IProp
 #guard_msgs in
 example (P : IProp) :
     dispec P (Result.ok 0) (fun value => P ∗ ⌜value = 0⌝) := by done
-
-/-- error: unsolved goals
-P : IProp
-Q : IPost ℕ
-m : Result ℕ
-⊢ ⦃ P ⦄
-    m
-    ⦃ Q ⦄ -/
-#guard_msgs in
-example (P : IProp) (Q : IPost Nat) (m : Result Nat) :
-    ispec P m Q := by done
 
 example (makeIncrement : Result (Nat → Result Nat)) : Prop :=
   ⦃ emp ⦄ makeIncrement ⦃ increment =>

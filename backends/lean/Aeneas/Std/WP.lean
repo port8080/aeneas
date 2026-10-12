@@ -623,37 +623,18 @@ where
     else
       return (#[], ← delab)
 
-private meta partial def delabSLPost : DelabM (Array Term × Term) := do
-  match_expr (← getExpr).consumeMData with
-  | uncurry' _ _ _ _ =>
-    withAppArg do
-      match_expr (← getExpr).consumeMData with
-      | Std.uncurry _ _ _ _ =>
-        withAppArg <| enterUncurryOnce #[] fun tupleBinders => do
-          let (patterns, (moreBinders, body)) ←
-            delabBinders tupleBinders.toList delabSLPost
-          return (#[← buildTupleTerm patterns] ++ moreBinders, body)
-      | _ =>
-        match (← getExpr).consumeMData with
-        | .lam _ _ _ _ =>
-          withBindingBodyUnusedName fun binder => do
-            let (moreBinders, body) ← delabSLPost
-            return (#[⟨binder⟩] ++ moreBinders, body)
-        | _ => failure
-  | Std.uncurry _ _ _ _ =>
-    withAppArg do
-      let (binder, body) ← delabUncurryAsTuple delab
-      return (#[binder], body)
-  | _ =>
-    if (← getExpr).consumeMData.isLambda then
-      withBindingBodyUnusedName fun binder => do
-        return (#[⟨binder⟩], ← delab)
-    else
-      return (#[], ← delab)
-
+/-- `⦃P⦄ m ⦃ binders => Q ⦄`, or `⦃P⦄ m ⦃ Q ⦄` for a constant postcondition `fun _ => Q`. Any
+other postcondition (e.g. a variable `Q : IPost α`) is left to the default `ispec P m Q`: the
+binder-less notation would read it back as `fun _ => Q`. -/
 private meta def delabSLISpecPost (pre monadExpr : Term) (isPartial : Bool) :
     DelabM Term := do
-  let (binders, body) ← delabSLPost
+  let post := (← getExpr).consumeMData
+  let (binders, body) ←
+    if post.isLambda && !post.bindingBody!.hasLooseBVars then
+      pure (#[], ← withBindingBodyUnusedName fun _ => delab)
+    else if post.isLambda || isPostBinderWrapper post then
+      delabPostBinders
+    else failure
   if h : binders.size > 0 then
     if isPartial then
       `(⦃$pre⦄ $monadExpr ⦃ $(binders[0]) $(binders.drop 1)* => $body⦄div)
@@ -812,6 +793,34 @@ example : ok ((0, (1, (2, 3))), 4) ⦃ ((a, (b, (c, d))), e) => a = 0 ∧ b = 1 
 ⊢ ok (0, (1, 2), (3, 4, 5), 6) ⦃ a (b, c) ((d, e, f), g) => a = 0 ∧ b = 1 ∧ c = 2 ∧ d = 3 ∧ e = 4 ∧ f = 5 ∧ g = 6 ⦄ -/
 #guard_msgs in example : ok (0, (1, 2), ((3, 4, 5), 6)) ⦃ a (b, c) ((d, e, f), g) =>
     a = 0 ∧ b = 1 ∧ c = 2 ∧ d = 3 ∧ e = 4 ∧ f = 5 ∧ g = 6 ⦄ := by done
+
+/-! ### Separation-logic postconditions without binders -/
+
+-- not a lambda: printed as an application, since `⦃ P ⦄ m ⦃ Q ⦄` would mean `fun _ => Q`
+/-- error: unsolved goals
+P : SepLogic.IProp
+m : Result ℕ
+Q : SepLogic.IPost ℕ
+⊢ ispec P m Q -/
+#guard_msgs in
+example (P : SepLogic.IProp) (m : Result Nat) (Q : SepLogic.IPost Nat) : Std.WP.ispec P m Q := by
+  done
+
+/-- error: unsolved goals
+P Q : SepLogic.IProp
+m : Result ℕ
+⊢ ⦃ P ⦄
+    m
+    ⦃ Q ⦄ -/
+#guard_msgs in example (P Q : SepLogic.IProp) (m : Result Nat) : ⦃ P ⦄ m ⦃ Q ⦄ := by done
+
+/-- error: unsolved goals
+P Q : SepLogic.IProp
+m : Result ℕ
+⊢ ⦃ P ⦄
+    m
+    ⦃ Q ⦄div -/
+#guard_msgs in example (P Q : SepLogic.IProp) (m : Result Nat) : ⦃ P ⦄ m ⦃ Q ⦄div := by done
 end Aeneas
 
 namespace Aeneas.Std.WP

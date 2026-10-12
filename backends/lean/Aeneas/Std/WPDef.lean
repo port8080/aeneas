@@ -115,20 +115,19 @@ open Lean PrettyPrinter
 
 Given `x0`, ..., `xn` and `body`, generates the (syntactic) term `fun (x0, ..., xn) => body`.
 -/
-private meta partial def buildPostUncurryLamWith (uncurryName : Name)
-    (xs : List Term) (body : Term) : MacroM Term := do
-  let uncurryIdent := mkIdent uncurryName
+private meta partial def buildUncurryLam (xs : List Term) (body : Term) : MacroM Term := do
+  let uncurryIdent := mkIdent ``Aeneas.Std.uncurry
   match xs with
   | [] => pure body
   | [x] => `(fun $x => $body)
   | [a, b] => `($uncurryIdent (fun $a $b => $body))
   | a :: rest =>
-    let inner ← buildPostUncurryLamWith uncurryName rest body
+    let inner ← buildUncurryLam rest body
     `($uncurryIdent (fun $a => $inner))
 
 /-- Helper to elaborate `binder => body` when binder is a tuple - this supports nested tuples. -/
-private meta partial def mkPostBinderFunWith (uncurryName : Name) (depth : Nat)
-    (binder : Term) (body : Term) : MacroM Term := do
+private meta partial def mkBinderFun (depth : Nat) (binder : Term) (body : Term) :
+    MacroM Term := do
   match binder with
   | `( ($a, $bs,*) ) =>
     let xs : List Term := a :: bs.getElems.toList
@@ -139,24 +138,23 @@ private meta partial def mkPostBinderFunWith (uncurryName : Name) (depth : Nat)
       | `( ($_, $_,*) ) =>
         -- Fresh identifier from depth + index
         let freshIdent := mkIdent $ .mkSimple s!"_p_{depth}_{idx}"
-        let inner ← mkPostBinderFunWith uncurryName (depth + 1) x wrappedBody
+        let inner ← mkBinderFun (depth + 1) x wrappedBody
         wrappedBody ← `($inner $freshIdent)
         leafIdents := freshIdent :: leafIdents
       | _ =>
         leafIdents := x :: leafIdents
-    buildPostUncurryLamWith uncurryName leafIdents wrappedBody
+    buildUncurryLam leafIdents wrappedBody
   | _ => `(fun $binder => $body)
 
-private meta partial def mkPostSyntaxWith (curryName uncurryName : Name)
-    (body : Term) (depth : Nat) (binders : List Term) : MacroM Term := do
+private meta partial def mkPostSyntax (body : Term) (depth : Nat) (binders : List Term) :
+    MacroM Term := do
   match binders with
   | [] => pure body
-  | [x] => mkPostBinderFunWith uncurryName depth x body
+  | [x] => mkBinderFun depth x body
   | x :: rest =>
-    let rest ← mkPostSyntaxWith curryName uncurryName body (depth + 1) rest
-    let inner ← mkPostBinderFunWith uncurryName depth x rest
-    let curryIdent := mkIdent curryName
-    `($curryIdent $inner)
+    let rest ← mkPostSyntax body (depth + 1) rest
+    let inner ← mkBinderFun depth x rest
+    `($(mkIdent ``Aeneas.Std.WP.uncurry') $inner)
 
 /-- If `stx` is a bare identifier or a juxtaposition (application) of bare
 identifiers — i.e. a binder group like `a b c` — return the identifiers in
@@ -193,20 +191,17 @@ private meta def expandBinders (xs : List Term) : MacroM (List Term) := do
 
 /-- Build the postcondition term for `⦃ xs => p ⦄`, expanding grouped binders
 into one component per name first. -/
-private meta def mkPostWith (curryName uncurryName : Name)
-    (binders : Array Term) (body : Term) : MacroM Term := do
-  mkPostSyntaxWith curryName uncurryName body 0 (← expandBinders binders.toList)
+private meta def mkPost (p : Term) (xs : List Term) : MacroM Term := do
+  mkPostSyntax p 0 (← expandBinders xs)
 
 macro_rules
   | `(⦃$P⦄ $m ⦃ $result => $Q⦄) => do
-      let post ←
-        mkPostWith ``Aeneas.Std.WP.uncurry' ``Aeneas.Std.uncurry #[result] (← `(iprop($Q)))
+      let post ← mkPost (← `(iprop($Q))) [result]
       `(ispec iprop($P) $m $post)
 
 macro_rules
   | `(⦃$P⦄ $m ⦃ $result $results:term* => $Q⦄) => do
-      let post ← mkPostWith ``Aeneas.Std.WP.uncurry' ``Aeneas.Std.uncurry
-        (#[result] ++ results) (← `(iprop($Q)))
+      let post ← mkPost (← `(iprop($Q))) (result :: results.toList)
       `(ispec iprop($P) $m $post)
 
 macro_rules
@@ -221,14 +216,12 @@ scoped syntax:lead (name := slDspecSyntaxPred)
 
 macro_rules
   | `(⦃$P⦄ $m ⦃ $result => $Q⦄div) => do
-      let post ←
-        mkPostWith ``Aeneas.Std.WP.uncurry' ``Aeneas.Std.uncurry #[result] (← `(iprop($Q)))
+      let post ← mkPost (← `(iprop($Q))) [result]
       `(dispec iprop($P) $m $post)
 
 macro_rules
   | `(⦃$P⦄ $m ⦃ $result $results:term* => $Q⦄div) => do
-      let post ← mkPostWith ``Aeneas.Std.WP.uncurry' ``Aeneas.Std.uncurry
-        (#[result] ++ results) (← `(iprop($Q)))
+      let post ← mkPost (← `(iprop($Q))) (result :: results.toList)
       `(dispec iprop($P) $m $post)
 
 macro_rules
@@ -248,29 +241,24 @@ scoped syntax:54 (name := pureDspecBinders)
 scoped syntax:54 (name := pureDspecPred)
   term:55 " ⦃ " term " ⦄div" : term
 
-private meta def mkPurePost (binders : Array Term) (p : Term) : MacroM Term := do
-  mkPostWith ``Aeneas.Std.WP.uncurry' ``Aeneas.Std.uncurry binders p
-
-/-- Macro expansion for a single element (may expand to several via a grouped binder) -/
 scoped macro_rules (kind := pureSpecBinders)
   | `($m ⦃ $x => $p ⦄) => do
-    let post ← mkPurePost #[x] p
+    let post ← mkPost p [x]
     `(Aeneas.Std.WP.spec $m $post)
 
-/-- Macro expansion for multiple elements -/
 scoped macro_rules (kind := pureSpecBinders)
   | `($m ⦃ $x $xs:term* => $p ⦄) => do
-    let post ← mkPurePost (#[x] ++ xs) p
+    let post ← mkPost p (x :: xs.toList)
     `(Aeneas.Std.WP.spec $m $post)
 
 scoped macro_rules (kind := pureDspecBinders)
   | `($m ⦃ $x => $p ⦄div) => do
-    let post ← mkPurePost #[x] p
+    let post ← mkPost p [x]
     `(Aeneas.Std.WP.dspec $m $post)
 
 scoped macro_rules (kind := pureDspecBinders)
   | `($m ⦃ $x $xs:term* => $p ⦄div) => do
-    let post ← mkPurePost (#[x] ++ xs) p
+    let post ← mkPost p (x :: xs.toList)
     `(Aeneas.Std.WP.dspec $m $post)
 
 /-- Macro expansion for predicate with no arrow -/
