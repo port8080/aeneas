@@ -2,7 +2,12 @@ module
 public import Aeneas.Tactic.Step
 public section
 
-namespace Aeneas.Tactic.Step.Tests.SpatialGhosts
+/-! # `step` on separation-logic specifications: frame inference and output destructuring
+
+`step` infers the frame of a callee's precondition (`iframe` in frame-inference mode), proves the
+pure parts of that precondition, and introduces the callee's outputs and postconditions. -/
+
+namespace Aeneas.Tactic.Step.Tests.SpatialGhostVars
 
 open Aeneas.Std Aeneas.SepLogic
 
@@ -10,7 +15,7 @@ example (cell : Nat → Nat → IProp) (read : Nat → Result Nat)
     (hread : ∀ p value, 0 < value →
       ⦃ cell p value ⦄ read p
       ⦃ result => ⌜result = value⌝ ∗ cell p value ⦄)
-    (p current old : Nat) (hcurrent : 0 < current) (_hold : 0 < old) :
+    (p current : Nat) (hcurrent : 0 < current) :
     ⦃ cell p current ⦄ read p
     ⦃ result => cell p current ∗ ⌜result = current⌝ ⦄ := by
   step*
@@ -30,8 +35,7 @@ example (cell : Nat → Nat → IProp) (read : Nat → Result Nat)
     (hread : ∀ p value, 0 < value →
       ⦃ cell p value ⦄ read p
       ⦃ result => ⌜result = value⌝ ∗ cell p value ⦄)
-    (p current old : Nat) (frame : IProp)
-    (hcurrent : 0 < current) (_hold : 0 < old) :
+    (p current : Nat) (frame : IProp) (hcurrent : 0 < current) :
     WP.ispec (frame ∗ cell p current)
     (do let value ← read p; pure (value + 1))
     (fun result => iprop(⌜result = current + 1⌝ ∗ cell p current ∗ frame)) := by
@@ -41,7 +45,7 @@ example (cell : Nat → Nat → IProp) (read : Nat → Result Nat)
     (hread : ∀ p value, 0 < value →
       ⦃ cell p value ⦄ read p
       ⦃ result => ⌜result = value⌝ ∗ cell p value ⦄)
-    (p current old : Nat) (hcurrent : 0 < current) (_hold : 0 < old) :
+    (p current : Nat) (hcurrent : 0 < current) :
     WP.dispec (cell p current) (read p)
       (fun result => iprop(⌜result = current⌝ ∗ cell p current)) := by
   step*
@@ -50,8 +54,7 @@ example (cell : Nat → Nat → IProp) (read : Nat → Result Nat)
     (hread : ∀ p value, 0 < value →
       ⦃ cell p value ⦄ read p
       ⦃ result => ⌜result = value⌝ ∗ cell p value ⦄)
-    (p q current old : Nat) (hp : q = p)
-    (hcurrent : 0 < current) (_hold : 0 < old) :
+    (p q current : Nat) (hp : q = p) (hcurrent : 0 < current) :
     WP.ispec (cell p current)
       (do let value ← read q; pure (value + 1))
       (fun result => iprop(⌜result = current + 1⌝ ∗ cell p current)) := by
@@ -115,4 +118,4 @@ example (cell : Nat → IProp) (n : Nat) (P : Nat → Prop) (hP : Unit → P n) 
   guard_target = P n
   exact hP ()
 
-end Aeneas.Tactic.Step.Tests.SpatialGhosts
+end Aeneas.Tactic.Step.Tests.SpatialGhostVars

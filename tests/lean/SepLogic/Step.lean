@@ -75,7 +75,7 @@ example (n : Nat) : ⦃ emp ⦄ namedReturn n ⦃ result => ⌜result = n⌝⦄ 
   step
 
 example (n : Nat) : ⦃ emp ⦄ (pure n : Result Nat) ⦃ result => ⌜result = n⌝⦄ := by
-  step with pure.spec
+  step with pure_spec
 
 example (p : MutRawPtr Nat) (value : Nat) :
     ⦃ p ↦ value ⦄ readFreeReturn p

@@ -149,6 +149,8 @@ meta def prepareIntroOutputs : PrepareIntroOutputs := do
   mk_spec_bind_skip_args := 4
   prepare_intro_outputs := ``prepareIntroOutputs
   to_mvcgen := .none
+  /- No lifting from `spec`: the `MonadLift Result ITreeC` instance above sends every effect,
+     `guardedModify` included, to `.div`, so `spec x p → coinSpec p x` does not hold. -/
   liftings := #[]
 }
 

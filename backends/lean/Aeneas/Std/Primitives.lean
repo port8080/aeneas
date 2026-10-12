@@ -349,14 +349,14 @@ open Result
 section Order
 
 open Lean.Order
-local notation "PartialOrder" => Lean.Order.PartialOrder
 
-instance : PartialOrder (Result α) := instPartialOrderCoIndOfInhabitedPUnit (ITreeF RustEffect α)
+instance : Lean.Order.PartialOrder (Result α) :=
+  instPartialOrderCoIndOfInhabitedPUnit (ITreeF RustEffect α)
 noncomputable instance : CCPO (Result α) := instCCPOCoIndOfInhabitedPUnit (ITreeF RustEffect α)
 noncomputable instance : MonoBind Result := instMonoBindITree
 
 @[partial_fixpoint_monotone]
-theorem bind_mono {R : Type a} {α} {S : Type b} [PartialOrder α]
+theorem bind_mono {R : Type a} {α} {S : Type b} [Lean.Order.PartialOrder α]
   (f : α → Result R) (g : α → R → Result S) :
   monotone f →
   monotone g →
@@ -410,8 +410,8 @@ open Lean.Order
 
 @[partial_fixpoint_monotone]
 theorem monotone_uncurry
-    {α : Type u} {β : Type v} {φ : Sort w} [PartialOrder φ]
-    {γ : Sort z} [PartialOrder γ]
+    {α : Type u} {β : Type v} {φ : Sort w} [Lean.Order.PartialOrder φ]
+    {γ : Sort z} [Lean.Order.PartialOrder γ]
     (f : γ → α → β → φ)
     (hmono : monotone f) :
     monotone (fun x => uncurry (f x)) := by
@@ -421,8 +421,8 @@ theorem monotone_uncurry
 
 @[partial_fixpoint_monotone]
 theorem monotone_uncurry_applied
-    {α : Type u} {β : Type v} {φ : Sort w} [PartialOrder φ]
-    {γ : Sort z} [PartialOrder γ]
+    {α : Type u} {β : Type v} {φ : Sort w} [Lean.Order.PartialOrder φ]
+    {γ : Sort z} [Lean.Order.PartialOrder γ]
     (f : γ → α → β → φ) (p : α × β)
     (hmono : monotone f) :
     monotone (fun x => uncurry (f x) p) := by

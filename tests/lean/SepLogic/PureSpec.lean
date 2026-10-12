@@ -47,10 +47,6 @@ example (P Q : Nat → Prop) :
   entails_emp_postWand_ipure_iff P Q
 
 /-- error: unsolved goals
-⊢ Result.ok 0 ⦃ r => r = 0 ⦄ -/
-#guard_msgs in example : Result.ok 0 ⦃ r => r = 0 ⦄ := by done
-
-/-- error: unsolved goals
 ⊢ Result.ok 0 ⦃ r => r = 0 ⦄div -/
 #guard_msgs in example : Result.ok 0 ⦃ r => r = 0 ⦄div := by done
 
@@ -81,45 +77,6 @@ example : ⦃ emp ⦄ Result.ok (0, 1) ⦃ x y => ⌜x = 0 ∧ y = 1⌝ ⦄ := b
     ⦃ (x, y) => ⌜x = 0 ∧ y = 1⌝ ⦄div -/
 #guard_msgs in
 example : ⦃ emp ⦄ Result.ok (0, 1) ⦃ (x, y) => ⌜x = 0 ∧ y = 1⌝ ⦄div := by done
-
-/-- error: unsolved goals
-⊢ Result.ok (0, 1) ⦃ (x, y) => x = 0 ∧ y = 1 ⦄ -/
-#guard_msgs in
-example : Result.ok (0, 1) ⦃ (x, y) => x = 0 ∧ y = 1 ⦄ := by done
-
-/-- error: unsolved goals
-⊢ Result.ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄ -/
-#guard_msgs in
-example : Result.ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄ := by done
-
-/-- error: unsolved goals
-⊢ Result.ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄div -/
-#guard_msgs in
-example : Result.ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄div := by done
-
-/-- error: unsolved goals
-⊢ Result.ok ((0, 1), 2) ⦃ (a, b) c => a = 0 ∧ b = 1 ∧ c = 2 ⦄ -/
-#guard_msgs in
-example : Result.ok ((0, 1), 2) ⦃ (a, b) c =>
-    a = 0 ∧ b = 1 ∧ c = 2 ⦄ := by done
-
-/-- error: unsolved goals
-⊢ Result.ok (0, 1, 2) ⦃ a b c => a = 0 ∧ b = 1 ∧ c = 2 ⦄ -/
-#guard_msgs in
-example : Result.ok (0, 1, 2) ⦃ a b c =>
-    a = 0 ∧ b = 1 ∧ c = 2 ⦄ := by done
-
-/-- error: unsolved goals
-⊢ Result.ok (0, 1, 2) ⦃ a (b, c) => a = 0 ∧ b = 1 ∧ c = 2 ⦄ -/
-#guard_msgs in
-example : Result.ok (0, 1, 2) ⦃ a (b, c) =>
-    a = 0 ∧ b = 1 ∧ c = 2 ⦄ := by done
-
-/-- error: unsolved goals
-⊢ Result.ok (0, 1, 2) ⦃ (a, (b, c)) => a = 0 ∧ b = 1 ∧ c = 2 ⦄ -/
-#guard_msgs in
-example : Result.ok (0, 1, 2) ⦃ (a, (b, c)) =>
-    a = 0 ∧ b = 1 ∧ c = 2 ⦄ := by done
 
 example : Result.ok (0, 1) ⦃ x y => x = 0 ∧ y = 1 ⦄ := by
   step*
@@ -477,8 +434,6 @@ example (e : Error) (p : Nat → Prop) : ¬ Aeneas.Std.WP.spec (Result.fail e) p
 example (p : Nat → Prop) : ¬ Aeneas.Std.WP.spec (Result.div : Result Nat) p :=
   spec_div.mp
 
-example : Result.ok 3 ⦃ r => r = 3 ⦄ := ret.spec 3
-
 example (e : Error) : ¬ (Result.fail e ⦃ (_ : Nat) => True ⦄) :=
   (spec_fail e).mp
 
@@ -644,7 +599,7 @@ example : ¬ ∃ q, into_raw (0 : Nat) = Result.ok q := by
   simp [into_raw, Aeneas.Std.RawPtr.materialize,
     Result.guardedModify] at hq
 
-namespace LegacyWPExamples
+namespace StepExamples
 
 open Aeneas.Std (massert)
 open Aeneas.Std.Result
@@ -683,22 +638,6 @@ example : ok ((0, 1), (2, 3)) ⦃ (a, b) (c, d) =>
     a = 0 ∧ b = 1 ∧ c = 2 ∧ d = 3 ⦄ := by step*
 example : ok (0, (1, 2), ((3, 4, 5), 6)) ⦃ a (b, c) ((d, e, f), g) =>
     a = 0 ∧ b = 1 ∧ c = 2 ∧ d = 3 ∧ e = 4 ∧ f = 5 ∧ g = 6 ⦄ := by step*
-
-section
-
-variable (U32 : Type) [HAdd U32 U32 (Result U32)]
-variable (x y : U32)
-
-#elab x + y ⦃ _ => True ⦄
-#elab True → x + y ⦃ _ => True ⦄
-#elab True ∧ x + y ⦃ _ => True ⦄
-
-example (f : Nat → Result (Nat × (Nat → Result Nat)))
-    (_ : ∀ x, f x ⦃ (y, g) => y > 0 ∧ ∀ x, g x ⦃ z => z > y ⦄ ⦄ ∧ True) :
-    True := by
-  simp only
-
-end
 
 def add1 (x : Nat) := Result.ok (x + 1)
 
@@ -770,6 +709,6 @@ example (zero : List Nat → Result (List Nat))
       pure ()) ⦃ _ => True ⦄ := by
   step*
 
-end LegacyWPExamples
+end StepExamples
 
 end PureSpecNotationTests

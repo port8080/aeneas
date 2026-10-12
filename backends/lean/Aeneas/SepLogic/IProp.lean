@@ -52,7 +52,7 @@ def owns (A : Heap) : IProp where
   holds h := Heap.Sub A h
   up_closed := fun hSub hExtend => hSub.trans hExtend
 
-/-- The overloaded `↦` of pointers and buffers. -/
+/-- The overloaded `↦` of pointers. -/
 class PointsTo (ρ : Type u) (β : outParam (Type v)) where
   pointsTo : ρ → β → IProp
 

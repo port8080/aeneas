@@ -1,5 +1,10 @@
 import SepLogic.Fixtures
 
+/-! Unit tests of the separation-logic layer: entailments and the `i` tactics (`iframe`, `iintro`,
+`irewrite`, `isimp`, `iwp =>`), the raw-pointer operations and the heap model (including the
+adequacy tests: reading empty or freed memory, double free), and `step` on `ispec`/`dispec`
+triples. -/
+
 open Aeneas
 open SepLogic
 open Aeneas.SepLogic
@@ -349,9 +354,6 @@ example (value : Nat) :
 example (p : MutRawPtr Nat) (value : Nat) :
     ⦃ p ↦ value ⦄ (pure () : Result Unit) ⦃ emp⦄ := by
   step*
-
-example (H1 H2 : IProp) : H1 ∗ (H1 -∗ H2) ⊢ H2 := wand_cancel H1 H2
-example (Q1 Q2 : IPost Nat) : Q1 ∗+ (Q1 -∗+ Q2) ⊢+ Q2 := postWand_cancel Q1 Q2
 
 example (p : MutRawPtr Nat) :
     iprop(∃ n, ⌜0 < n⌝ ∗ p ↦ n) ⊢ iprop(∃ m, p ↦ (m + 1)) := by

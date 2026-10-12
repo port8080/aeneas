@@ -13,9 +13,10 @@ def totalPure (x : Nat) : Result Nat := Result.ok x
 def partialPure (x : Nat) : Result Nat := Result.ok x
 def totalSpatial (x : Nat) : Result Nat := Result.ok x
 def partialSpatial (x : Nat) : Result Nat := Result.ok x
-def legacyTotalPure (x : Nat) : Result Nat := Result.ok x
-def legacyPartialPure (x : Nat) : Result Nat := Result.ok x
-def legacyPair (x : Nat) : Result (Nat × Nat) := Result.ok (x, x + 1)
+/- Specs stated as explicit `WP.spec`/`WP.dspec` terms (not the `⦃⦄` notation), proved by `simp`. -/
+def explicitTotalPure (x : Nat) : Result Nat := Result.ok x
+def explicitPartialPure (x : Nat) : Result Nat := Result.ok x
+def explicitPair (x : Nat) : Result (Nat × Nat) := Result.ok (x, x + 1)
 
 @[step] theorem totalPure.spec (x : Nat) : totalPure x ⦃ y => y = x ⦄ := by
   unfold totalPure
@@ -35,19 +36,19 @@ def legacyPair (x : Nat) : Result (Nat × Nat) := Result.ok (x, x + 1)
   unfold partialSpatial
   step*
 
-@[step] theorem legacyTotalPure.spec (x : Nat) :
-    Aeneas.Std.WP.spec (legacyTotalPure x) (fun y => y = x) := by
-  simp [legacyTotalPure]
+@[step] theorem explicitTotalPure.spec (x : Nat) :
+    Aeneas.Std.WP.spec (explicitTotalPure x) (fun y => y = x) := by
+  simp [explicitTotalPure]
 
-@[step] theorem legacyPartialPure.spec (x : Nat) :
-    Aeneas.Std.WP.dspec (legacyPartialPure x) (fun y => y = x) := by
-  simp [legacyPartialPure]
+@[step] theorem explicitPartialPure.spec (x : Nat) :
+    Aeneas.Std.WP.dspec (explicitPartialPure x) (fun y => y = x) := by
+  simp [explicitPartialPure]
 
-@[step] theorem legacyPair.spec (x : Nat) :
-    Aeneas.Std.WP.spec (legacyPair x)
+@[step] theorem explicitPair.spec (x : Nat) :
+    Aeneas.Std.WP.spec (explicitPair x)
       (Aeneas.Std.WP.uncurry' fun first second =>
         first = x ∧ second = x + 1) := by
-  simp [legacyPair, Aeneas.Std.WP.spec_ok, Aeneas.Std.WP.uncurry']
+  simp [explicitPair, Aeneas.Std.WP.spec_ok, Aeneas.Std.WP.uncurry']
 
 run_meta do
   for (specName, arity) in
@@ -71,20 +72,20 @@ example (x : Nat) (P : IProp) :
     ⦃ P ⦄ totalPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄div := by step*
 
 example (x : Nat) (P : IProp) :
-    ⦃ P ⦄ legacyTotalPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄ := by step*
+    ⦃ P ⦄ explicitTotalPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄ := by step*
 example (x : Nat) (P : IProp) :
-    ⦃ P ⦄ legacyTotalPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄div := by step*
+    ⦃ P ⦄ explicitTotalPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄div := by step*
 example (x : Nat) (P : IProp) :
-    ⦃ P ⦄ legacyPartialPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄div := by step*
+    ⦃ P ⦄ explicitPartialPure x ⦃ y => P ∗ ⌜y = x⌝ ⦄div := by step*
 
-def useLegacyPair (x : Nat) : Result Nat := do
-  let pair ← legacyPair x
+def useExplicitPair (x : Nat) : Result Nat := do
+  let pair ← explicitPair x
   Result.ok (pair.1 + pair.2)
 
 example (x : Nat) :
-    ⦃ emp ⦄ useLegacyPair x
+    ⦃ emp ⦄ useExplicitPair x
         ⦃ result => ⌜result = x + (x + 1)⌝ ⦄ := by
-    unfold useLegacyPair
+    unfold useExplicitPair
     step as ⟨pair, hFirst, hSecond⟩
     guard_hyp hFirst : pair.1 = x
     guard_hyp hSecond : pair.2 = x + 1

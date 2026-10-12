@@ -24,7 +24,7 @@ example {x y : U8} :
       (do
         if x < 10#u8
         then x * 2#u8
-        else pure y : Result U8)
+        else pure y)
     ⦃ ⇓ z => ⌜ z.val ≠ y → z.val < 20 ⌝ ⦄ := by
   mvcgen <;> scalar_tac
 
