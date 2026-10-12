@@ -23,10 +23,13 @@ namespace Aeneas.Std
 
 /-! ### START Trusted definitions
 
-Every executable definition below models a Rust function (see its `rust_fun` pattern), with the
-signature Aeneas gives that function: `Box<T>` is `T`, and a `&mut T` argument is returned updated
-next to the result. The exceptions are `RawPtr.materialize`, the allocation primitive behind
-them, and `RawPtr.cast_scalar`, the `as` cast between raw pointers, which always fails. -/
+What raw pointers and their operations mean. Each definition with a `rust_fun` pattern models that
+Rust function, with the signature Aeneas gives it: `Box<T>` is `T`, and a `&mut T` argument is
+returned updated next to the result. The other definitions fix what specifications state, or are
+primitives without a Rust counterpart: `addr`, `shift`, `retype`, `InBounds`, `pointsTo` and
+`pointsToRange` (the `↦` and `↦*` assertions); `materialize`, which stores values in fresh slots
+(the allocation behind `into_raw` and `from_mut`); and `cast_scalar`, the `as` cast between scalar
+raw pointers that the extractor emits by name, which always fails. -/
 
 inductive Mutability where
 | Mut | Const
@@ -41,18 +44,6 @@ structure RawPtr (T : Type _) (M : Mutability) where
 
 abbrev MutRawPtr (T : Type _) := RawPtr T .Mut
 abbrev ConstRawPtr (T : Type _) := RawPtr T .Const
-
-open Lean PrettyPrinter Delaborator SubExpr in
-@[app_delab RawPtr]
-meta def delabRawPtr : Delab := do
-  let e ← getExpr
-  guard (e.isAppOfArity ``RawPtr 2)
-  let name ← match e.appArg! with
-    | .const ``Mutability.Mut _ => pure ``MutRawPtr
-    | .const ``Mutability.Const _ => pure ``ConstRawPtr
-    | _ => failure
-  let t ← withNaryArg 0 delab
-  `($(mkIdent (← unresolveNameGlobal name)) $t)
 
 namespace RawPtr
 
@@ -101,13 +92,10 @@ def RawPtr.cast_const (q : MutRawPtr T) : ConstRawPtr T :=
 
 namespace RawPtr
 
-structure Readable (q : RawPtr T M) (h : Heap) : Prop where
-  contains : Heap.contains h T q.addr
-
 @[rust_fun "core::ptr::const_ptr::{*const @T}::read"]
 def read (q : RawPtr T M) : Result T :=
-  Result.guardedModify (fun h => q.Readable h) fun h hReadable =>
-    (Heap.read q.addr h hReadable.contains, h)
+  Result.guardedModify (fun h => Heap.contains h T q.addr) fun h hContains =>
+    (Heap.read q.addr h hContains, h)
 
 attribute [rust_fun "core::ptr::mut_ptr::{*mut @T}::read"] read
 attribute [rust_fun "core::ptr::read"] read
@@ -137,10 +125,6 @@ def core.ptr.from_mut (r : T) : Result (MutRawPtr T × T) := do
   let p ← RawPtr.materialize [r]
   pure (p, r)
 
-inductive ScalarKind where
-| Signed (ty : IScalarTy)
-| Unsigned (ty : UScalarTy)
-
 class IsScalar (T : Type) where
   isScalar : (∃ ty, T = UScalar ty) ∨ (∃ ty, T = IScalar ty)
 
@@ -151,6 +135,18 @@ def RawPtr.cast_scalar {T} {M} (T' : Type) (M' : Mutability) [IsScalar T] [IsSca
 
 /-! ### END Trusted definitions -/
 
+open Lean PrettyPrinter Delaborator SubExpr in
+@[app_delab RawPtr]
+meta def delabRawPtr : Delab := do
+  let e ← getExpr
+  guard (e.isAppOfArity ``RawPtr 2)
+  let name ← match e.appArg! with
+    | .const ``Mutability.Mut _ => pure ``MutRawPtr
+    | .const ``Mutability.Const _ => pure ``ConstRawPtr
+    | _ => failure
+  let t ← withNaryArg 0 delab
+  `($(mkIdent (← unresolveNameGlobal name)) $t)
+
 namespace RawPtr
 
 def singleton (q : RawPtr T M) (value : T) : Heap :=
@@ -160,6 +156,10 @@ def contains (h : Heap) (q : RawPtr T M) : Prop :=
   Heap.contains h T q.addr
 
 end RawPtr
+
+inductive ScalarKind where
+| Signed (ty : IScalarTy)
+| Unsigned (ty : UScalarTy)
 
 instance {ty} : IsScalar (UScalar ty) where
   isScalar := by simp
@@ -310,10 +310,6 @@ theorem alloc.boxed.Box.into_raw.spec (value : T) :
 
 namespace RawPtr
 
-theorem readable_of_pointsTo {q : RawPtr T M} {value : T} {h : Heap}
-    (hPointsTo : (q ↦ value) h) : q.Readable h :=
-  ⟨contains_of_pointsTo hPointsTo⟩
-
 @[step]
 theorem read.spec (q : RawPtr T M) (value : T) :
     ⦃ q ↦ value ⦄ q.read
@@ -322,11 +318,9 @@ theorem read.spec (q : RawPtr T M) (value : T) :
   intro h hPointsTo frame hCompatible
   have hPointsToFrame : (q ↦ value) (h ∪ frame) :=
     (q ↦ value).up_closed hPointsTo (Heap.Sub.union_left hCompatible)
-  have hReadable : q.Readable (h ∪ frame) :=
-    readable_of_pointsTo hPointsToFrame
-  refine ⟨hReadable, h, hCompatible, rfl, ?_⟩
-  exact (sep_pure_l _ _ h).mpr
-    ⟨Heap.read_of_sub hPointsToFrame hReadable.contains, hPointsTo⟩
+  have hContains := contains_of_pointsTo hPointsToFrame
+  refine ⟨hContains, h, hCompatible, rfl, ?_⟩
+  exact (sep_pure_l _ _ h).mpr ⟨Heap.read_of_sub hPointsToFrame hContains, hPointsTo⟩
 
 end RawPtr
 

@@ -283,8 +283,8 @@ example (p : MutRawPtr Nat) : ¬ (⦃ emp ⦄ read p ⦃ _ => emp⦄) := by
   rw [ispec_iff] at hTriple
   have hSpec := hTriple emp ∅ ((entails_of_eq (sep_emp_r_eq emp).symm) ∅ trivial)
   simp only [Aeneas.Std.RawPtr.read, Result.guardedModify] at hSpec
-  obtain ⟨hReadable, -⟩ := hSpec.vis_view
-  exact RawPtr.not_contains_empty p hReadable.contains
+  obtain ⟨hContains, -⟩ := hSpec.vis_view
+  exact RawPtr.not_contains_empty p hContains
 
 /-! Allocation ids are never reused: freed slots and end markers stay in the heap as dead slots. -/
 
@@ -301,9 +301,9 @@ example : ¬ ⦃ emp ⦄ (do
   obtain ⟨_, hSpec⟩ := hSpec.vis_view
   obtain ⟨hContains, hSpec⟩ := hSpec.vis_view
   obtain ⟨_, hSpec⟩ := hSpec.vis_view
-  obtain ⟨hReadable, -⟩ := hSpec.vis_view
+  obtain ⟨hContains', -⟩ := hSpec.vis_view
   exact Heap.not_contains_free hContains
-    ((Heap.contains_freshHeap_of_mem (Heap.mem_free hContains)).mp hReadable.contains)
+    ((Heap.contains_freshHeap_of_mem (Heap.mem_free hContains)).mp hContains')
 
 /-- Double free, with an allocation in between that must not reuse the freed id. -/
 example : ¬ ⦃ emp ⦄ (do
@@ -333,9 +333,9 @@ example : ¬ ⦃ emp ⦄ (do
     Result.guardedModify, Std.bind_tc_vis, Std.bind_tc_ok] at hSpec
   obtain ⟨_, hSpec⟩ := hSpec.vis_view
   obtain ⟨_, hSpec⟩ := hSpec.vis_view
-  obtain ⟨hReadable, -⟩ := hSpec.vis_view
+  obtain ⟨hContains, -⟩ := hSpec.vis_view
   exact Heap.not_contains_freshHeap_end (h := ∅) (values := (Aeneas.Std.Slice.new Nat).val)
-    ((Heap.contains_freshHeap_of_mem (Heap.mem_freshHeap_end _ _)).mp hReadable.contains)
+    ((Heap.contains_freshHeap_of_mem (Heap.mem_freshHeap_end _ _)).mp hContains)
 
 def allocAndForget (value : Nat) : Result Unit := do
   let _ ← into_raw value

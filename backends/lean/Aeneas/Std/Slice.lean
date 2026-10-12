@@ -62,16 +62,16 @@ theorem Slice.len_val {α : Type u} (v : Slice α) : (Slice.len v).val = v.lengt
 def Slice.as_ptr {T : Type} (s : Slice T) : Result (ConstRawPtr T) :=
   RawPtr.materialize s.val
 
-@[step]
-theorem Slice.as_ptr.spec {T : Type} (s : Slice T) :
-    ⦃ emp ⦄ s.as_ptr ⦃ p => p ↦* s.val⦄ :=
-  RawPtr.materialize.spec s.val
-
 /-- The pointer points to a fresh copy of `s`, and `s` is returned unchanged. -/
 @[rust_fun "core::slice::{[@T]}::as_mut_ptr"]
 def Slice.as_mut_ptr {T : Type} (s : Slice T) : Result (MutRawPtr T × Slice T) := do
   let p ← RawPtr.materialize s.val
   pure (p, s)
+
+@[step]
+theorem Slice.as_ptr.spec {T : Type} (s : Slice T) :
+    ⦃ emp ⦄ s.as_ptr ⦃ p => p ↦* s.val⦄ :=
+  RawPtr.materialize.spec s.val
 
 @[step]
 theorem Slice.as_mut_ptr.spec {T : Type} (s : Slice T) :
