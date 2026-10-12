@@ -14,6 +14,7 @@ meta def delabIpure : Delab := do
 
 @[app_delab iand]
 meta def delabIand : Delab := do
+  guard ((← getExpr).isAppOfArity ``iand 2)
   let lhs ← withNaryArg 0 delab
   let rhs ← withNaryArg 1 delab
   `(iprop($lhs ∧ $rhs))

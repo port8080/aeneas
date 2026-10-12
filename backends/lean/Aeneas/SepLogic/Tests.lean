@@ -27,6 +27,11 @@ P Q : IProp
 #guard_msgs in
 example (P Q : IProp) : Entails P (iand P Q) := by done
 
+-- a partial application is printed as is
+/-- info: iand emp : IProp → IProp -/
+#guard_msgs in
+#check iand emp
+
 /-- error: unsolved goals
 cell : ℕ → IProp
 ⊢ emp ⊢ iprop(∃ v, ⌜0 < v⌝ ∗ cell v) -/
