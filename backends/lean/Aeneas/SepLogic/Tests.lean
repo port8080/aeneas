@@ -45,6 +45,18 @@ cell : ℕ → IProp
 example (cell : Nat → IProp) : emp ⊢ iprop(∀ v, cell v) := by done
 
 /-- error: unsolved goals
+J : ℕ → ℕ → IProp
+⊢ emp ⊢ iprop(∃ a b, J a b) -/
+#guard_msgs in
+example (J : Nat → Nat → IProp) : emp ⊢ iprop(∃ a b, J a b) := by done
+
+/-- error: unsolved goals
+J : ℕ → ℕ → IProp
+⊢ emp ⊢ iprop(∀ a b, J a b) -/
+#guard_msgs in
+example (J : Nat → Nat → IProp) : emp ⊢ iprop(∀ a b, J a b) := by done
+
+/-- error: unsolved goals
 cell : ℕ → IProp
 ⊢ emp ⊢ iexists cell -/
 #guard_msgs in
@@ -62,6 +74,15 @@ example (J : Nat → IProp) (P : IProp) :
 
 example (J : Nat → IProp) (P : IProp) :
     iprop(∀ x, J x ∧ P) = iforall (fun x => iand (J x) P) :=
+  rfl
+
+example (J : Nat → Nat → IProp) :
+    iprop(∃ a b, J a b) = iexists (fun a => iexists (fun b => J a b)) :=
+  rfl
+
+example (J : Nat → Nat → Nat → IProp) :
+    iprop(∀ a b c : Nat, J a b c) =
+      iforall (fun a : Nat => iforall (fun b : Nat => iforall (fun c : Nat => J a b c))) :=
   rfl
 
 example (H P Q : IProp) (hP : H ⊢ P) (hQ : H ⊢ Q) : H ⊢ iprop(P ∧ Q) :=

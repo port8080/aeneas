@@ -26,20 +26,37 @@ meta def delabEntails : Delab := do
   let rhs ← withNaryArg 1 delab
   `($lhs ⊢ $rhs)
 
-/-- `iexists fun x => H` as `iprop(∃ x, H)`; an eta-reduced `iexists J` is left as is. -/
+/-- Is `e` the quantifier `quant` (`iexists`/`iforall`) applied to a lambda? -/
+private meta def isQuantLam (quant : Name) (e : Expr) : Bool :=
+  e.isAppOfArity quant 2 && e.appArg!.isLambda
+
+/-- At `quant fun x => …`: the binders of the nested `quant` lambdas, merged, and the body. -/
+private meta partial def delabQuantBinders (quant : Name) : DelabM (Array Ident × Term) :=
+  withAppArg <| withBindingBodyUnusedName fun x => do
+    if isQuantLam quant (← getExpr) then
+      let (binders, body) ← delabQuantBinders quant
+      return (#[⟨x⟩] ++ binders, body)
+    else
+      return (#[⟨x⟩], ← delab)
+
+/-- `iexists fun a => iexists fun b => H` as `iprop(∃ a b, H)`; an eta-reduced `iexists J` is
+left as is. -/
 @[app_delab iexists]
 meta def delabIexists : Delab := do
-  let e ← getExpr
-  guard (e.isAppOfArity ``iexists 2 && e.appArg!.isLambda)
-  withAppArg <| withBindingBodyUnusedName fun x => do
-    `(iprop(∃ $(⟨x⟩):ident, $(← delab)))
+  guard (isQuantLam ``iexists (← getExpr))
+  let (binders, body) ← delabQuantBinders ``iexists
+  let binders ← binders.mapM fun x => `(binderIdent| $x:ident)
+  `(iprop(∃ $binders:binderIdent*, $body))
 
-/-- `iforall fun x => H` as `iprop(∀ x, H)`; an eta-reduced `iforall J` is left as is. -/
+/-- `iforall fun a => iforall fun b => H` as `iprop(∀ a b, H)`; an eta-reduced `iforall J` is
+left as is. -/
 @[app_delab iforall]
 meta def delabIforall : Delab := do
-  let e ← getExpr
-  guard (e.isAppOfArity ``iforall 2 && e.appArg!.isLambda)
-  withAppArg <| withBindingBodyUnusedName fun x => do
-    `(iprop(∀ $(⟨x⟩):ident, $(← delab)))
+  guard (isQuantLam ``iforall (← getExpr))
+  let (binders, body) ← delabQuantBinders ``iforall
+  let binders : TSyntaxArray
+      [`ident, ``Lean.Parser.Term.hole, ``Lean.Parser.Term.bracketedBinder] :=
+    binders.map (⟨·.raw⟩)
+  `(iprop(∀ $binders*, $body))
 
 end Aeneas.SepLogic

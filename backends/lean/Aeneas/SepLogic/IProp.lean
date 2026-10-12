@@ -146,6 +146,10 @@ macro_rules
       `(iexists fun ($x : $type) => iprop($H))
   | `(iprop(∃ ($x:ident : $type), $H)) =>
       `(iexists fun ($x : $type) => iprop($H))
+  | `(iprop(∃ $x:ident $y:ident $ys*, $H)) =>
+      `(iexists fun $x => iprop(∃ $y:ident $ys*, $H))
+  | `(iprop(∃ $x:ident $y:ident $ys* : $type, $H)) =>
+      `(iexists fun ($x : $type) => iprop(∃ $y:ident $ys* : $type, $H))
 
 scoped infixr:40 " ∗+ " => postSep
 
@@ -159,6 +163,10 @@ macro_rules
       `(iforall fun ($x : $type) => iprop($H))
   | `(iprop(∀ ($x:ident : $type), $H)) =>
       `(iforall fun ($x : $type) => iprop($H))
+  | `(iprop(∀ $x:ident $y:ident $ys*, $H)) =>
+      `(iforall fun $x => iprop(∀ $y:ident $ys*, $H))
+  | `(iprop(∀ $x:ident $y:ident $ys* : $type, $H)) =>
+      `(iforall fun ($x : $type) => iprop(∀ $y:ident $ys* : $type, $H))
 
 scoped infixr:25 " -∗ " => wand
 macro_rules
